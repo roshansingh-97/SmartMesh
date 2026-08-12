@@ -26,8 +26,15 @@ bool StorageManager::readMessage(uint8_t index, SmartMeshPacket& packet) {
     uint8_t count = getSavedCount();
     if (index >= count) return false;
     
+    // Correct ring-buffer mapping:
+    // If full, slot 0 is at writeIndex (oldest entry)
+    uint8_t physicalSlot = index;
+    if (count == MAX_SAVED_MESSAGES) {
+        physicalSlot = (writeIndex + index) % MAX_SAVED_MESSAGES;
+    }
+
     char key[10];
-    snprintf(key, sizeof(key), "msg_%d", index);
+    snprintf(key, sizeof(key), "msg_%d", physicalSlot);
     
     size_t bytesRead = prefs.getBytes(key, &packet, sizeof(SmartMeshPacket));
     return (bytesRead == sizeof(SmartMeshPacket));

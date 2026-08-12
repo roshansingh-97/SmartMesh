@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <Preferences.h>
-#include "Config.h"
+#include "../Config.h"
 
 #define MAX_SAVED_MESSAGES 50
 

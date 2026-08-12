@@ -11,15 +11,16 @@ class MeshRadio {
 public:
     static QueueHandle_t xQueueOutgoing;
     static QueueHandle_t xQueueIncoming;
+    static QueueHandle_t xQueueACK; // Dedicated ACK queue to avoid swallowing data packets
 
     void begin();
     bool sendPacket(SmartMeshPacket* packet);
     bool sendWithRetry(SmartMeshPacket& packet, uint8_t maxRetries = 3);
     bool waitForACK(uint16_t packetID, uint32_t timeoutMs);
+    void sendACK(uint16_t msgID, uint8_t targetNode);
 
     static void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status);
 
-    // Conditional signature based on ESP-IDF version
 #if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
     static void onDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingData, int len);
 #else

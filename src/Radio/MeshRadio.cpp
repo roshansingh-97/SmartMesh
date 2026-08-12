@@ -2,15 +2,14 @@
 
 QueueHandle_t MeshRadio::xQueueOutgoing = NULL;
 QueueHandle_t MeshRadio::xQueueIncoming = NULL;
+QueueHandle_t MeshRadio::xQueueACK = NULL;
 
 const uint8_t broadcastMAC[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-// Send Status Callback
 void MeshRadio::onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-    // Optional: Log send status
+    // Optional debug logging
 }
 
-// Receive Callback (Compatible with both ESP-IDF v4 and v5)
 #if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 void MeshRadio::onDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingData, int len) {
 #else
@@ -20,13 +19,28 @@ void MeshRadio::onDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData,
         SmartMeshPacket packet;
         memcpy(&packet, incomingData, sizeof(packet));
 
+        // Validate CRC before processing
+        uint16_t calculatedCRC = calculateCRC16((uint8_t*)&packet, sizeof(SmartMeshPacket) - sizeof(uint16_t));
+        if (packet.crc != calculatedCRC) {
+            return; // Corrupted packet, drop
+        }
+
         if (packet.receiverID == NODE_ID || packet.receiverID == 0xFF) {
-            if (xQueueIncoming != NULL) {
-                BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-                xQueueSendFromISR(xQueueIncoming, &packet, &xHigherPriorityTaskWoken);
-                if (xHigherPriorityTaskWoken) {
-                    portYIELD_FROM_ISR();
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+            // Route ACKs to xQueueACK, and regular data to xQueueIncoming
+            if (packet.packetType == PACKET_TYPE_ACK) {
+                if (xQueueACK != NULL) {
+                    xQueueSendFromISR(xQueueACK, &packet, &xHigherPriorityTaskWoken);
                 }
+            } else {
+                if (xQueueIncoming != NULL) {
+                    xQueueSendFromISR(xQueueIncoming, &packet, &xHigherPriorityTaskWoken);
+                }
+            }
+
+            if (xHigherPriorityTaskWoken) {
+                portYIELD_FROM_ISR();
             }
         }
     }
@@ -49,11 +63,22 @@ void MeshRadio::begin() {
 
     xQueueOutgoing = xQueueCreate(10, sizeof(SmartMeshPacket));
     xQueueIncoming = xQueueCreate(10, sizeof(SmartMeshPacket));
+    xQueueACK      = xQueueCreate(5, sizeof(SmartMeshPacket));
 }
 
 bool MeshRadio::sendPacket(SmartMeshPacket* packet) {
+    packet->crc = calculateCRC16((uint8_t*)packet, sizeof(SmartMeshPacket) - sizeof(uint16_t));
     esp_err_t result = esp_now_send(broadcastMAC, (uint8_t*)packet, sizeof(SmartMeshPacket));
     return (result == ESP_OK);
+}
+
+void MeshRadio::sendACK(uint16_t msgID, uint8_t targetNode) {
+    SmartMeshPacket ackPacket;
+    ackPacket.senderID = NODE_ID;
+    ackPacket.receiverID = targetNode;
+    ackPacket.msgID = msgID;
+    ackPacket.packetType = PACKET_TYPE_ACK;
+    sendPacket(&ackPacket);
 }
 
 bool MeshRadio::waitForACK(uint16_t packetID, uint32_t timeoutMs) {
@@ -61,25 +86,19 @@ bool MeshRadio::waitForACK(uint16_t packetID, uint32_t timeoutMs) {
     SmartMeshPacket rxPacket;
 
     while (millis() - start < timeoutMs) {
-        // Poll queue for incoming ACK packets
-        if (xQueueReceive(xQueueIncoming, &rxPacket, pdMS_TO_TICKS(10)) == pdTRUE) {
-            // Check if packet is an ACK and matches the expected packet ID
-            if (rxPacket.packetType == PACKET_TYPE_ACK && rxPacket.msgID == packetID) {
+        // Poll dedicated ACK queue
+        if (xQueueReceive(xQueueACK, &rxPacket, pdMS_TO_TICKS(10)) == pdTRUE) {
+            if (rxPacket.msgID == packetID) {
                 return true;
             }
-            // If it's a regular message, put it back or process it separately
         }
     }
-    return false; // Timed out waiting for ACK
+    return false; // Timeout
 }
 
 bool MeshRadio::sendWithRetry(SmartMeshPacket& packet, uint8_t maxRetries) {
-    packet.crc = calculateCRC16((uint8_t*)&packet, sizeof(SmartMeshPacket) - sizeof(uint16_t));
-    
     for (uint8_t attempt = 0; attempt < maxRetries; attempt++) {
-        esp_err_t result = esp_now_send(broadcastMAC, (uint8_t*)&packet, sizeof(SmartMeshPacket));
-        
-        if (result == ESP_OK) {
+        if (sendPacket(&packet)) {
             if (waitForACK(packet.msgID, 300)) {
                 return true;
             }

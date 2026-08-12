@@ -9,7 +9,9 @@ private:
 public:
     DisplayManager();
     void begin();
-    void drawHeader(const char* title, uint8_t batPct);
+    void drawHeader(const char* title, uint8_t batPct = 100);
     void renderMenu(uint8_t selectedIndex);
     void renderComposeScreen(const String& typedText);
+    void renderInboxScreen(uint8_t senderID, const char* message);
+    void renderStatusScreen(const char* line1, const char* line2);
 };
