@@ -2,19 +2,33 @@
 #define MESSAGE_QUEUE_H
 
 #include <Arduino.h>
-#include "Packet.h"
+#include "Message.h"
+
+// Maximum messages that can be queued in memory at once
+#define QUEUE_CAPACITY 10
 
 class MessageQueue {
 private:
-    QueueHandle_t handle;
+    Message buffer[QUEUE_CAPACITY];
+    uint8_t head;
+    uint8_t tail;
+    uint8_t count;
 
 public:
     MessageQueue();
-    bool init(size_t capacity = 10);
-    bool push(const Packet& pkt);
-    bool pushFromISR(const Packet& pkt, BaseType_t *higherPriorityTaskWoken);
-    bool pop(Packet& pkt, uint32_t waitMs = 0);
+
+    // Queue Operations
+    bool enqueue(const Message& msg);
+    bool dequeue(Message& outMsg);
+    bool peek(Message& outMsg) const;
+
+    // Status Queries
     bool isEmpty() const;
+    bool isFull() const;
+    uint8_t size() const;
+    uint8_t getCapacity() const { return QUEUE_CAPACITY; }
+
+    // Maintenance
     void clear();
 };
 

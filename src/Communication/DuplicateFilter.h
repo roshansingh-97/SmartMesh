@@ -3,22 +3,31 @@
 
 #include <Arduino.h>
 
-struct SeenPacketEntry {
-    uint8_t senderID;
-    uint16_t msgID;
+// Number of recently seen packet signatures to keep in history
+#define DUPLICATE_HISTORY_SIZE 20
+
+struct SeenMessageEntry {
+    uint16_t senderNodeId;
+    uint32_t messageId;
+    bool active;
 };
 
 class DuplicateFilter {
 private:
-    static const uint8_t HISTORY_SIZE = 20;
-    SeenPacketEntry history[HISTORY_SIZE];
+    SeenMessageEntry history[DUPLICATE_HISTORY_SIZE];
     uint8_t headIndex;
+    uint8_t count;
 
 public:
     DuplicateFilter();
-    void begin();
-    bool isDuplicate(uint8_t senderID, uint16_t msgID);
-    void add(uint8_t senderID, uint16_t msgID);
+
+    // Query & Update
+    bool isDuplicate(uint16_t senderNodeId, uint32_t messageId) const;
+    void add(uint16_t senderNodeId, uint32_t messageId);
+    
+    // Status & Utility
+    uint8_t size() const { return count; }
+    uint8_t getCapacity() const { return DUPLICATE_HISTORY_SIZE; }
     void clear();
 };
 

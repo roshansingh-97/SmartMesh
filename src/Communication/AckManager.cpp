@@ -1,6 +1,6 @@
 #include "AckManager.h"
 
-AckManager::AckManager(uint32_t timeoutMs) : ackTimeoutMs(timeoutMs) {
+AckManager::AckManager(uint32_t ackTimeoutMs) : timeoutMs(ackTimeoutMs) {
     clear();
 }
 
@@ -9,17 +9,27 @@ void AckManager::begin() {
 }
 
 void AckManager::clear() {
-    for (uint8_t i = 0; i < MAX_PENDING; i++) {
+    for (uint8_t i = 0; i < MAX_PENDING_ACK; i++) {
         pendingList[i].active = false;
+        pendingList[i].retryCount = 0;
+        pendingList[i].maxRetries = DEFAULT_MAX_RETRIES;
+        pendingList[i].lastSentTime = 0;
     }
 }
 
-bool AckManager::addPending(const Packet& pkt, uint8_t maxRetries) {
-    for (uint8_t i = 0; i < MAX_PENDING; i++) {
+bool AckManager::addPending(const Message& msg, uint8_t maxRetries) {
+    // Broadcast messages (0xFF) do not expect ACKs
+    if (msg.isBroadcast()) {
+        return false;
+    }
+
+    for (uint8_t i = 0; i < MAX_PENDING_ACK; i++) {
         if (!pendingList[i].active) {
-            pendingList[i].packet = pkt;
+            pendingList[i].msg = msg;
+            pendingList[i].msg.messageStatus = STATUS_SENT;
             pendingList[i].lastSentTime = millis();
-            pendingList[i].retriesLeft = maxRetries;
+            pendingList[i].retryCount = 0;
+            pendingList[i].maxRetries = maxRetries;
             pendingList[i].active = true;
             return true;
         }
@@ -27,33 +37,55 @@ bool AckManager::addPending(const Packet& pkt, uint8_t maxRetries) {
     return false; // Queue full
 }
 
-bool AckManager::handleAckReceived(uint16_t msgID, uint8_t senderID) {
-    for (uint8_t i = 0; i < MAX_PENDING; i++) {
+bool AckManager::processAck(uint16_t messageId, uint8_t senderNodeId) {
+    for (uint8_t i = 0; i < MAX_PENDING_ACK; i++) {
         if (pendingList[i].active && 
-            pendingList[i].packet.rawPacket.msgID == msgID &&
-            pendingList[i].packet.rawPacket.receiverID == senderID) {
-            pendingList[i].active = false; // Acknowledged & resolved
+            pendingList[i].msg.messageId == messageId && 
+            pendingList[i].msg.receiverNodeId == senderNodeId) {
+            
+            pendingList[i].msg.messageStatus = STATUS_DELIVERED;
+            pendingList[i].active = false; // Resolved
             return true;
         }
     }
-    return false;
+    return false; // Not found or already resolved
 }
 
-bool AckManager::checkTimeouts(Packet& pktToRetry) {
+bool AckManager::checkTimeouts(Message& msgToRetry) {
     uint32_t now = millis();
-    for (uint8_t i = 0; i < MAX_PENDING; i++) {
+
+    for (uint8_t i = 0; i < MAX_PENDING_ACK; i++) {
         if (pendingList[i].active) {
-            if (now - pendingList[i].lastSentTime >= ackTimeoutMs) {
-                if (pendingList[i].retriesLeft > 0) {
-                    pendingList[i].retriesLeft--;
+            // Non-blocking timer check
+            if (now - pendingList[i].lastSentTime >= timeoutMs) {
+                if (pendingList[i].retryCount < pendingList[i].maxRetries) {
+                    // Timeout hit -> trigger retry
+                    pendingList[i].retryCount++;
                     pendingList[i].lastSentTime = now;
-                    pktToRetry = pendingList[i].packet;
-                    return true; // Requires re-transmission
+                    pendingList[i].msg.incrementHop(); // Optionally track transmission attempts
+                    msgToRetry = pendingList[i].msg;
+                    return true;
                 } else {
-                    pendingList[i].active = false; // Retries exhausted
+                    // Maximum retries exceeded -> mark as failed
+                    pendingList[i].msg.messageStatus = STATUS_FAILED;
+                    pendingList[i].active = false;
                 }
             }
         }
     }
     return false;
+}
+
+bool AckManager::hasPending() const {
+    return getPendingCount() > 0;
+}
+
+uint8_t AckManager::getPendingCount() const {
+    uint8_t count = 0;
+    for (uint8_t i = 0; i < MAX_PENDING_ACK; i++) {
+        if (pendingList[i].active) {
+            count++;
+        }
+    }
+    return count;
 }

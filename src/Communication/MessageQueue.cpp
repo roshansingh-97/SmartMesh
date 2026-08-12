@@ -1,34 +1,54 @@
 #include "MessageQueue.h"
 
-MessageQueue::MessageQueue() : handle(NULL) {}
-
-bool MessageQueue::init(size_t capacity) {
-    handle = xQueueCreate(capacity, sizeof(SmartMeshPacket));
-    return (handle != NULL);
+MessageQueue::MessageQueue() {
+    clear();
 }
 
-bool MessageQueue::push(const Packet& pkt) {
-    if (!handle) return false;
-    return (xQueueSend(handle, &pkt.rawPacket, 0) == pdTRUE);
+bool MessageQueue::enqueue(const Message& msg) {
+    if (isFull()) {
+        return false; // Overflow prevented
+    }
+
+    buffer[tail] = msg;
+    tail = (tail + 1) % QUEUE_CAPACITY;
+    count++;
+    return true;
 }
 
-bool MessageQueue::pushFromISR(const Packet& pkt, BaseType_t *higherPriorityTaskWoken) {
-    if (!handle) return false;
-    return (xQueueSendFromISR(handle, &pkt.rawPacket, higherPriorityTaskWoken) == pdTRUE);
+bool MessageQueue::dequeue(Message& outMsg) {
+    if (isEmpty()) {
+        return false; // Underflow prevented
+    }
+
+    outMsg = buffer[head];
+    head = (head + 1) % QUEUE_CAPACITY;
+    count--;
+    return true;
 }
 
-bool MessageQueue::pop(Packet& pkt, uint32_t waitMs) {
-    if (!handle) return false;
-    return (xQueueReceive(handle, &pkt.rawPacket, pdMS_TO_TICKS(waitMs)) == pdTRUE);
+bool MessageQueue::peek(Message& outMsg) const {
+    if (isEmpty()) {
+        return false;
+    }
+
+    outMsg = buffer[head];
+    return true;
 }
 
 bool MessageQueue::isEmpty() const {
-    if (!handle) return true;
-    return (uxQueueMessagesWaiting(handle) == 0);
+    return (count == 0);
+}
+
+bool MessageQueue::isFull() const {
+    return (count == QUEUE_CAPACITY);
+}
+
+uint8_t MessageQueue::size() const {
+    return count;
 }
 
 void MessageQueue::clear() {
-    if (handle) {
-        xQueueReset(handle);
-    }
+    head = 0;
+    tail = 0;
+    count = 0;
 }
