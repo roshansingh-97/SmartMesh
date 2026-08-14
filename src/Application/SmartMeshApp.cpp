@@ -1,6 +1,6 @@
 #include "SmartMeshApp.h"
 
-SmartMeshApp::SmartMeshApp() : currentState(STATE_MENU), menuSelection(0) {}
+SmartMeshApp::SmartMeshApp() : lastBatteryCheckMs(0) {}
 
 void SmartMeshApp::begin() {
     Serial.begin(115200);
@@ -10,67 +10,77 @@ void SmartMeshApp::begin() {
     display.begin();
     keypad.begin();
     radio.begin();
-
     comms.begin(&radio);
+    uiManager.begin();
 
-    display.renderMenu(menuSelection);
+    // Initial Screen Render
+    uiManager.draw(display);
+}
+
+void SmartMeshApp::postEvent(const Event& event) {
+    if (!eventQueue.push(event)) {
+        Serial.println("[WARN] EventQueue Full! Dropped event.");
+    }
+}
+
+void SmartMeshApp::updateSubsystems() {
+    keypad.update();
+    comms.process();
+    uiManager.update();
+
+    // 1. Scan Keypad and Push Key Event
+    char key = keypad.scanKeypad();
+    if (key != '\0') {
+        Event keyEvent(EventType::KEY_PRESSED);
+        keyEvent.payload.keyData.key = key;
+        postEvent(keyEvent);
+    }
+
+    // 2. Battery Monitoring Check
+    if (millis() - lastBatteryCheckMs >= 10000) {
+        lastBatteryCheckMs = millis();
+        uint8_t level = Battery.getPercentage();
+        if (level <= 15) {
+            Event batEvent(EventType::BATTERY_LOW);
+            batEvent.payload.batteryData.percentage = level;
+            postEvent(batEvent);
+        }
+    }
+}
+
+void SmartMeshApp::dispatchEvent(const Event& event) {
+    switch (event.type) {
+        case EventType::KEY_PRESSED:
+            // Forward input to active screen via UIManager
+            uiManager.handleInput(event.payload.keyData.key);
+            // Request UI redraw on user keypress
+            uiManager.draw(display);
+            break;
+
+        case EventType::MESSAGE_RECEIVED:
+            Serial.printf("[APP] New message from node %d\n", event.payload.msgData.senderId);
+            // Future Phase 7: Storage.saveMessage(...)
+            // Future Phase 8: uiManager.refreshInboxScreen()
+            break;
+
+        case EventType::BATTERY_LOW:
+            Serial.printf("[WARN] Low Battery Event: %d%%\n", event.payload.batteryData.percentage);
+            break;
+
+        default:
+            break;
+    }
+}
+
+void SmartMeshApp::processEvents() {
+    Event event;
+    while (eventQueue.pop(event)) {
+        dispatchEvent(event);
+    }
 }
 
 void SmartMeshApp::update() {
-    // 1. Tick key input & power manager
-    keypad.update();
-
-    // 2. Tick communication manager pipeline
-    comms.process();
-
-    // 3. Handle UI key events
-    char key = keypad.scanKeypad();
-
-    switch (currentState) {
-        case STATE_MENU:
-            if (key == '2' || key == 'B') {
-                menuSelection = (menuSelection + 1) % 4;
-                display.renderMenu(menuSelection);
-            } else if (key == '8' || key == 'A') {
-                menuSelection = (menuSelection == 0) ? 3 : menuSelection - 1;
-                display.renderMenu(menuSelection);
-            } else if (key == '#' || key == 'D') {
-                if (menuSelection == 0) {
-                    keypad.clearMessage();
-                    currentState = STATE_COMPOSE;
-                    display.renderComposeScreen(keypad.getMessage());
-                }
-            }
-            break;
-
-        case STATE_COMPOSE:
-            display.renderComposeScreen(keypad.getMessage());
-
-            if (key == 'B') {
-                currentState = STATE_MENU;
-                display.renderMenu(menuSelection);
-            } else if (key == '#') {
-                String msgText = keypad.getMessage();
-                if (msgText.length() > 0) {
-                    // Send message via CommunicationManager
-                    comms.sendMessage(0xFF, msgText.c_str(), MSG_TYPE_TEXT);
-                    
-                    display.renderStatusScreen("Queued!", "Sending in background...");
-                    vTaskDelay(pdMS_TO_TICKS(1000));
-                    keypad.clearMessage();
-                    currentState = STATE_MENU;
-                    display.renderMenu(menuSelection);
-                }
-            }
-            break;
-
-        case STATE_INBOX:
-            if (key == '*' || key == 'B') {
-                currentState = STATE_MENU;
-                display.renderMenu(menuSelection);
-            }
-            break;
-    }
-
-    vTaskDelay(pdMS_TO_TICKS(15));
+    updateSubsystems();
+    processEvents();
+    vTaskDelay(pdMS_TO_TICKS(10));
 }
