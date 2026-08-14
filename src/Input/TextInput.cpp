@@ -1,5 +1,10 @@
 #include "TextInput.h"
 
+// Define the static member variable to satisfy the linker
+const uint8_t TextInput::MAX_MSG_LEN;
+
+// Rest of your TextInput implementation below...
+
 // Multi-tap lookup tables
 static const char* MAP_LOWER[] = {
     " 0",        // 0

@@ -1,42 +1,32 @@
-#ifndef SMARTMESH_APP_H
-#define SMARTMESH_APP_H
+#ifndef SMART_MESH_APP_H
+#define SMART_MESH_APP_H
 
-#include <Arduino.h>
-#include "../Config.h"
-#include "Events.h"
-#include "EventQueue.h"
-#include "../Communication/CommunicationManager.h"
-#include "../Radio/MeshRadio.h"
-#include "../UI/DisplayManager.h"
 #include "../UI/UIManager.h"
-#include "../Input/KeypadHandler.h"
-#include "../Power/BatteryMonitor.h"
-#include "../Storage/Storage.h"
+#include "../UI/DisplayManager.h"
+#include "../UI/Screens/HomeScreen.h"
+#include "../UI/Screens/ComposeScreen.h"
+#include "../UI/Screens/InboxScreen.h"
+#include "../UI/Screens/SentScreen.h"
+#include "../UI/Screens/SettingsScreen.h"
 
 class SmartMeshApp {
 private:
-    MeshRadio radio;
-    CommunicationManager comms;
-    DisplayManager display;
     UIManager uiManager;
-    KeypadHandler keypad;
+    DisplayManager displayManager;
 
-    EventQueue eventQueue;
-
-    uint32_t lastBatteryCheckMs;
-
-    void updateSubsystems();
-    void processEvents();
-    void dispatchEvent(const Event& event);
+    // Screen Instances
+    HomeScreen homeScreen;
+    ComposeScreen composeScreen;
+    InboxScreen inboxScreen;
+    SentScreen sentScreen;
+    SettingsScreen settingsScreen;
 
 public:
-    SmartMeshApp();
+    SmartMeshApp() = default;
 
     void begin();
     void update();
-
-    // Event Producer Interface
-    void postEvent(const Event& event);
+    void handleKeyPress(char key); // <--- Add this declaration
 };
 
-#endif
+#endif // SMART_MESH_APP_H
