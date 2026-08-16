@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "author": "SmartMesh Project",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "board-ssd1306",
+      "id": "oled",
+      "top": -160,
+      "left": 180,
+      "attrs": { "i2cAddress": "0x3c" }
+    },
+    {
+      "type": "wokwi-membrane-keypad",
+      "id": "keypad",
+      "top": 100,
+      "left": 180,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "buzzer",
+      "top": -100,
+      "left": -140,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_status",
+      "top": 50,
+      "left": -140,
+      "attrs": { "color": "green" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 100,
+      "left": -140,
+      "attrs": { "value": "220" }
+    }
+  ],
+  "connections": [
+    [ "esp:GND.1", "oled:GND", "black", [ "v0" ] ],
+    [ "esp:3V3", "oled:VCC", "red", [ "v0" ] ],
+    [ "esp:21", "oled:SDA", "blue", [ "v0" ] ],
+    [ "esp:22", "oled:SCL", "yellow", [ "v0" ] ],
+
+    [ "keypad:R1", "esp:13", "green", [ "v0" ] ],
+    [ "keypad:R2", "esp:18", "green", [ "v0" ] ],
+    [ "keypad:R3", "esp:14", "green", [ "v0" ] ],
+    [ "keypad:R4", "esp:27", "green", [ "v0" ] ],
+
+    [ "keypad:C1", "esp:26", "orange", [ "v0" ] ],
+    [ "keypad:C2", "esp:25", "orange", [ "v0" ] ],
+    [ "keypad:C3", "esp:33", "orange", [ "v0" ] ],
+    [ "keypad:C4", "esp:32", "orange", [ "v0" ] ],
+
+    [ "esp:15", "buzzer:1", "purple", [ "v0" ] ],
+    [ "buzzer:2", "esp:GND.1", "black", [ "v0" ] ],
+
+    [ "esp:2", "led_status:A", "red", [ "v0" ] ],
+    [ "led_status:C", "r1:1", "black", [ "v0" ] ],
+    [ "r1:2", "esp:GND.1", "black", [ "v0" ] ]
+  ]
+}

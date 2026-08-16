@@ -9,6 +9,17 @@ StorageManager::StorageManager()
 void StorageManager::begin() {
     loadSettingsInternal();
     loadMetadata();
+
+    // Seed default contacts on first boot if they don't exist yet
+    prefs.begin("contacts", true);
+    bool hasContacts = prefs.isKey("c_1234");
+    prefs.end();
+
+    if (!hasContacts) {
+        saveContact(0x1234, "Alice");
+        saveContact(0x5678, "Bob");
+        saveContact(0xFFFF, "Broadcast");
+    }
 }
 
 void StorageManager::loadSettingsInternal() {

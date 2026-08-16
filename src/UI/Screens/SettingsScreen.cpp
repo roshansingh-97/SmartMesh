@@ -12,19 +12,22 @@ void SettingsScreen::onEnter() {
 }
 
 void SettingsScreen::handleInput(char key, UIManager &uiManager) {
+    // BACK ACTION: Return to Home Screen
     if (key == 'C' || key == '*') {
-        // Access homeScreen via the public getter method
         uiManager.navigateTo(uiManager.getHomeScreen());
         return;
     }
 
-    if (key == 'A' || key == '2') {
+    // UP Navigation (Key A ONLY)
+    if (key == 'A') {
         if (selectedOption > 0) selectedOption--;
     }
-    else if (key == 'B' || key == '8') {
+    // DOWN Navigation (Key B ONLY)
+    else if (key == 'B') {
         if (selectedOption < TOTAL_OPTIONS - 1) selectedOption++;
     }
-    else if (key == 'D' || key == '5' || key == '#') {
+    // TOGGLE / ACTION (Key D or #)
+    else if (key == 'D' || key == '#') {
         switch (selectedOption) {
             case 0:
                 settings.silentMode = !settings.silentMode;
@@ -45,6 +48,7 @@ void SettingsScreen::handleInput(char key, UIManager &uiManager) {
 }
 
 void SettingsScreen::draw(DisplayManager &display) {
+    display.clear(); // Clear display buffer
     U8G2 &u8g2 = display.getU8g2();
     u8g2.setFont(u8g2_font_6x10_tf);
     u8g2.drawStr(0, 10, "--- SETTINGS ---");
@@ -65,5 +69,6 @@ void SettingsScreen::draw(DisplayManager &display) {
              (selectedOption == 2) ? '>' : ' ');
     u8g2.drawStr(0, 48, buf);
 
-    u8g2.drawStr(0, 62, "[D] Toggle  [C] Back");
+    u8g2.drawStr(0, 62, "[D] Toggle  [C/*] Back");
+    display.sendBuffer(); // Render frame
 }

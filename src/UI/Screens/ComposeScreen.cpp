@@ -1,20 +1,18 @@
 #include "ComposeScreen.h"
 #include "../UIManager.h"
-#include "../DisplayManager.h"
+#include "../../Storage/Storage.h"
 
 ComposeScreen::ComposeScreen() {}
 
 void ComposeScreen::initialize() {
-    textInput.begin();
+    textInput.clear();
 }
 
 void ComposeScreen::onEnter() {
-    // Clear buffer whenever entering compose screen
     textInput.clear();
 }
 
 void ComposeScreen::update() {
-    // Drive the 800ms multi-tap commit timer
     textInput.update();
 }
 
@@ -28,26 +26,34 @@ void ComposeScreen::draw(DisplayManager& display) {
     );
 }
 
-void ComposeScreen::handleInput(char key, UIManager& ui) {
-    // 'C' = Back / Cancel
+void ComposeScreen::handleInput(char key, UIManager& uiManager) {
+    // Exit back to Home Screen (Key C)
     if (key == 'C') {
-        textInput.clear();
-        ui.changeScreen(ui.getHomeScreen());
+        uiManager.navigateTo(uiManager.getHomeScreen());
         return;
     }
 
-    // 'D' = Send Message
+    // Send Message (Key D)
     if (key == 'D') {
         textInput.commitPendingChar();
-        if (textInput.getLength() > 0) {
-            // Future Phase 8: Emit MESSAGE_SEND_REQUEST event to CommunicationManager
-            Serial.printf("[COMPOSE] Message ready to send: %s\n", textInput.getBuffer());
-            textInput.clear();
-            ui.changeScreen(ui.getHomeScreen());
+
+        const char* msgText = textInput.getBuffer();
+        if (strlen(msgText) > 0) {
+            // 1. Save to Sent Messages (0xFFFF = Broadcast Target ID)
+            Storage.saveSentMessage(0xFFFF, msgText);
+
+            // 2. Loopback Mode Test (Saves to Inbox if enabled)
+            UserSettings settings = Storage.getSettings();
+            if (settings.loopbackMode) {
+                Storage.saveInboxMessage(0x1234, msgText);
+            }
         }
+
+        textInput.clear();
+        uiManager.navigateTo(uiManager.getHomeScreen());
         return;
     }
 
-    // Pass all other keys ('0'-'9', '*', '#', 'A', 'B') to TextInput engine
+    // Pass key press to Multi-Tap Engine
     textInput.handleKeyPress(key);
 }

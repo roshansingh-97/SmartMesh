@@ -17,11 +17,17 @@ void MenuManager::begin() {
 }
 
 void MenuManager::navigateNext() {
-    selectedIndex = (selectedIndex + 1) % totalItems;
+    // Moves selection DOWN
+    selectedIndex = (selectedIndex + 1) % totalItems; 
 }
 
 void MenuManager::navigatePrevious() {
-    selectedIndex = (selectedIndex == 0) ? (totalItems - 1) : (selectedIndex - 1);
+    // Moves selection UP
+    if (selectedIndex == 0) {
+        selectedIndex = totalItems - 1; // Wrap around to bottom
+    } else {
+        selectedIndex--;
+    }
 }
 
 void MenuManager::setScreen(ScreenState screen) {
@@ -31,23 +37,25 @@ void MenuManager::setScreen(ScreenState screen) {
 
 void MenuManager::handleKeyPress(char key) {
     if (currentScreen == SCREEN_MAIN_MENU) {
-        // Navigation Controls
-        if (key == '2' || key == 'B') {
-            navigateNext();
-        } else if (key == '8' || key == 'A') {
-            navigatePrevious();
-        } else if (key == '#' || key == 'D') {
-            // Select current option
+        // UP Navigation (A key only)
+        if (key == 'A') {
+            navigatePrevious(); 
+        } 
+        // DOWN Navigation (B key only)
+        else if (key == 'B') {
+            navigateNext();     
+        } 
+        // SELECT / ENTER (D or # key)
+        else if (key == 'D' || key == '#') {
             currentScreen = mainMenuItems[selectedIndex].targetScreen;
         }
     } else {
-        // Global Back Button ('*' returns to Main Menu from any active screen)
-        if (key == '*') {
+        // BACK / CANCEL (C or * key returns to Main Menu)
+        if (key == 'C' || key == '*') {
             setScreen(SCREEN_MAIN_MENU);
         }
     }
 }
-
 void MenuManager::render(DisplayManager& display) {
     switch (currentScreen) {
         case SCREEN_MAIN_MENU: {

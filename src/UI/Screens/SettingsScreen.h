@@ -1,7 +1,7 @@
 #ifndef SETTINGS_SCREEN_H
 #define SETTINGS_SCREEN_H
 
-#include "../Screen.h"
+#include "Screen.h" // Fixed: relative include path within same directory
 #include "../DisplayManager.h"
 #include "../../Storage/Storage.h"
 
