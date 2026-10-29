@@ -16,13 +16,12 @@ void AboutScreen::draw(DisplayManager& display) {
     u8g2.drawStr(0, 36, "Node ID: 0x1234");
     u8g2.drawStr(0, 48, "Status: Online");
     
-    // Bottom Footer
-    u8g2.drawStr(0, 62, "[C/*] Back");
+    u8g2.drawStr(0, 62, "C: Back");
     display.sendBuffer();
 }
 
 void AboutScreen::handleInput(char key, UIManager& uiManager) {
-    if (key == 'C' || key == '*') {
+    if (key == 'C') { // Single button check
         uiManager.navigateTo(uiManager.getHomeScreen());
     }
 }

@@ -1,6 +1,7 @@
 #include "ComposeScreen.h"
 #include "../UIManager.h"
 #include "../../Storage/Storage.h"
+#include "../../Application/SmartMeshApp.h"
 
 ComposeScreen::ComposeScreen() {}
 
@@ -39,13 +40,13 @@ void ComposeScreen::handleInput(char key, UIManager& uiManager) {
 
         const char* msgText = textInput.getBuffer();
         if (strlen(msgText) > 0) {
-            // 1. Save to Sent Messages (0xFFFF = Broadcast Target ID)
-            Storage.saveSentMessage(0xFFFF, msgText);
-
-            // 2. Loopback Mode Test (Saves to Inbox if enabled)
-            UserSettings settings = Storage.getSettings();
-            if (settings.loopbackMode) {
-                Storage.saveInboxMessage(0x1234, msgText);
+            if (appOwner != nullptr) {
+                // A keypad-composed message is sent directly to the paired phone over BLE.
+                appOwner->sendComposedMessage(msgText);
+            } else {
+                // Fallback if this screen is used outside SmartMeshApp.
+                Storage.saveSentMessage(0x434C, msgText);
+                Serial.println("[KEYPAD->BLE] ERROR: app callback is not configured.");
             }
         }
 

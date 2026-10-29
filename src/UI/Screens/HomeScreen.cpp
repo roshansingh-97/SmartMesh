@@ -2,22 +2,48 @@
 #include "../UIManager.h"
 #include "../DisplayManager.h"
 
-HomeScreen::HomeScreen() : selectedIndex(0) {}
+HomeScreen::HomeScreen() : currentState(STATE_SPLASH), selectedIndex(0), hasBooted(false) {}
 
 void HomeScreen::initialize() {
+    currentState = STATE_SPLASH;
     selectedIndex = 0;
+    hasBooted = false;
 }
 
 void HomeScreen::onEnter() {
+    // If already booted, skip splash and go straight to menu when returning via back button
+    if (hasBooted) {
+        currentState = STATE_MENU;
+    } else {
+        currentState = STATE_SPLASH;
+    }
     selectedIndex = 0;
 }
 
 void HomeScreen::draw(DisplayManager& display) {
-    display.renderMenuList("SmartMesh OS", menuItems, MENU_COUNT, selectedIndex);
+    display.clear();
+    U8G2 &u8g2 = display.getU8g2();
+    u8g2.setFont(u8g2_font_6x10_tf);
+
+    if (currentState == STATE_SPLASH) {
+        u8g2.drawStr(14, 22, "SmartMesh v1.0");
+        u8g2.drawStr(10, 48, "Press [D] to Enter");
+        display.sendBuffer();
+    } else {
+        // Pass "Main Menu" as the title
+        display.renderMenuList("Main Menu", menuItems, MENU_COUNT, selectedIndex);
+    }
 }
 
 void HomeScreen::handleInput(char key, UIManager& uiManager) {
-    // UP Navigation (Key A or 'a')
+    if (currentState == STATE_SPLASH) {
+        if (key == 'D' || key == 'd' || key == '#' || key == '\r' || key == '\n') {
+            currentState = STATE_MENU;
+            hasBooted = true; // Mark splash as passed
+        }
+        return;
+    }
+
     if (key == 'A' || key == 'a') {
         if (selectedIndex == 0) {
             selectedIndex = MENU_COUNT - 1;
@@ -25,11 +51,9 @@ void HomeScreen::handleInput(char key, UIManager& uiManager) {
             selectedIndex--;
         }
     } 
-    // DOWN Navigation (Key B or 'b')
     else if (key == 'B' || key == 'b') {
         selectedIndex = (selectedIndex + 1) % MENU_COUNT;
     } 
-    // SELECT / ENTER (Key D, 'd', '#', or Enter)
     else if (key == 'D' || key == 'd' || key == '#' || key == '\r' || key == '\n') {
         switch (selectedIndex) {
             case 0:

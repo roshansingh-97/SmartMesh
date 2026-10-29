@@ -3,14 +3,18 @@
 
 #include <Arduino.h>
 #include "Screen.h"
-#include "../../input/TextInput.h" // Fixed: points to src/input/TextInput.h
+#include "../../Input/TextInput.h"
+
+class SmartMeshApp;
 
 class ComposeScreen : public Screen {
 private:
     TextInput textInput;
+    SmartMeshApp* appOwner = nullptr;
 
 public:
     ComposeScreen();
+    void setAppOwner(SmartMeshApp* owner) { appOwner = owner; }
     void initialize() override;
     void onEnter() override;
     void update() override;

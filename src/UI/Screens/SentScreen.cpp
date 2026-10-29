@@ -16,8 +16,7 @@ void SentScreen::onEnter() {
 void SentScreen::handleInput(char key, UIManager &uiManager) {
     int count = Storage.getSentCount();
 
-    // BACK ACTION: Exit detail view OR return to Home Screen
-    if (key == 'C' || key == '*') {
+    if (key == 'C') { // Single button check
         if (inDetailView) {
             inDetailView = false;
         } else {
@@ -29,7 +28,6 @@ void SentScreen::handleInput(char key, UIManager &uiManager) {
     if (inDetailView) return;
     if (count == 0) return;
 
-    // UP Navigation (Key A ONLY)
     if (key == 'A') {
         if (selectedIndex > 0) {
             selectedIndex--;
@@ -38,7 +36,6 @@ void SentScreen::handleInput(char key, UIManager &uiManager) {
             }
         }
     }
-    // DOWN Navigation (Key B ONLY)
     else if (key == 'B') {
         if (selectedIndex < count - 1) {
             selectedIndex++;
@@ -47,14 +44,13 @@ void SentScreen::handleInput(char key, UIManager &uiManager) {
             }
         }
     }
-    // VIEW MESSAGE (Key D or #)
     else if (key == 'D' || key == '#') {
         inDetailView = true;
     }
 }
 
 void SentScreen::draw(DisplayManager &display) {
-    display.clear(); // Clear display buffer
+    display.clear();
     U8G2 &u8g2 = display.getU8g2();
     u8g2.setFont(u8g2_font_6x10_tf);
     int count = Storage.getSentCount();
@@ -69,9 +65,9 @@ void SentScreen::draw(DisplayManager &display) {
             u8g2.drawStr(0, 22, toBuf);
 
             u8g2.drawStr(0, 36, msg.text);
-            u8g2.drawStr(0, 62, "[C/*] Back");
+            u8g2.drawStr(0, 62, "C: Back");
         }
-        display.sendBuffer(); // Render frame
+        display.sendBuffer();
         return;
     }
 
@@ -79,8 +75,8 @@ void SentScreen::draw(DisplayManager &display) {
 
     if (count == 0) {
         u8g2.drawStr(10, 35, "No Sent Messages");
-        u8g2.drawStr(0, 62, "[C/*] Back");
-        display.sendBuffer(); // Render frame
+        u8g2.drawStr(0, 62, "C: Back");
+        display.sendBuffer();
         return;
     }
 
@@ -102,6 +98,6 @@ void SentScreen::draw(DisplayManager &display) {
     if (scrollOffset > 0) u8g2.drawStr(120, 22, "^");
     if (scrollOffset + VISIBLE_ROWS < count) u8g2.drawStr(120, 50, "v");
 
-    u8g2.drawStr(0, 62, "[D] View  [C/*] Back");
-    display.sendBuffer(); // Render frame
+    u8g2.drawStr(0, 62, "D:View  C:Back");
+    display.sendBuffer();
 }

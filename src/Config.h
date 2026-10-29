@@ -20,6 +20,7 @@ enum PacketType : uint8_t {
 
 // Application States
 enum SystemState {
+    SCREEN_SPLASH,
     STATE_MENU,
     STATE_COMPOSE,
     STATE_INBOX
@@ -33,25 +34,25 @@ enum SystemState {
 #define OLED_SCL 22
 #define OLED_SDA 21
 
-// Keypad Pins (GPIO 12 changed to GPIO 18 to fix ESP32 boot freeze)
+// Keypad Pins
 #define KEYPAD_R1 13
 #define KEYPAD_R2 18
 #define KEYPAD_R3 14
 #define KEYPAD_R4 27
 #define KEYPAD_C1 26
 #define KEYPAD_C2 25
-#define KEYPAD_C3 33
-#define KEYPAD_C4 32
+#define KEYPAD_C3 32  // Swapped C3/C4 back
+#define KEYPAD_C4 33  // Swapped C3/C4 back
 
 // Universal Radio Packet
 struct __attribute__((packed)) SmartMeshPacket {
-    uint8_t mode;               // CommunicationMode (1, 2, 3, 4)
-    uint8_t packetType;         // PACKET_TYPE_TEXT, PACKET_TYPE_ACK, etc.
-    uint16_t msgID;             // Unique message identifier
-    uint16_t senderID;          // Originating ESP32 Node ID (16-bit)
-    uint16_t receiverID;        // Destination ESP32 Node ID (0xFFFF = Broadcast)
-    char payload[MAX_PAYLOAD_LEN]; // Message text
-    uint16_t crc;               // CRC16 Checksum
+    uint8_t mode;               
+    uint8_t packetType;         
+    uint16_t msgID;             
+    uint16_t senderID;          
+    uint16_t receiverID;        
+    char payload[MAX_PAYLOAD_LEN]; 
+    uint16_t crc;               
 };
 
 #endif // CONFIG_H

@@ -31,13 +31,12 @@ void ContactsScreen::draw(DisplayManager& display) {
         u8g2.drawStr(0, 24 + (i * 12), buf);
     }
 
-    // Bottom Footer
-    u8g2.drawStr(0, 62, "[A/B]Nav [C/*] Back");
+    u8g2.drawStr(0, 62, "A/B:Nav C:Back");
     display.sendBuffer();
 }
 
 void ContactsScreen::handleInput(char key, UIManager& uiManager) {
-    if (key == 'C' || key == '*') {
+    if (key == 'C') { // Single button check
         uiManager.navigateTo(uiManager.getHomeScreen());
         return;
     }

@@ -35,7 +35,10 @@ public:
     void update();
     void handleKey(char key);
 
-    // Send outgoing messages (Mode 2 or Mode 4 from keypad)
+    // Directly send a keypad-composed message to the connected phone over BLE.
+    bool sendComposedMessage(const char* text);
+
+    // Send outgoing messages over ESP-NOW.
     bool sendMessage(uint16_t targetNodeId, const char* text, uint8_t mode = MODE_2_SCT_TO_SCT);
 };
 

@@ -17,7 +17,7 @@ public:
     bool sendPacket(SmartMeshPacket* packet);
     bool sendWithRetry(SmartMeshPacket& packet, uint8_t maxRetries = 3);
     bool waitForACK(uint16_t packetID, uint32_t timeoutMs);
-    void sendACK(uint16_t msgID, uint8_t targetNode);
+    void sendACK(uint16_t msgID, uint16_t targetNode);
 
     static void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status);
 
